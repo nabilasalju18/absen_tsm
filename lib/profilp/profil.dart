@@ -26,32 +26,37 @@ class _ProfilPageState extends State<ProfilPage>
   bool isMoreOpen = false;
   List<Map<String, dynamic>> dataAbsensi = [];
   String errorMessage = "";
-  String jam = "";
-  String tanggal = "";
-  Timer? _timer;
+  String tanggal = DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(DateTime.now());
+  String jam = DateFormat('HH:mm').format(DateTime.now());
+  Timer? timer;
 
   @override
   void initState() {
     super.initState();
     checkLoginAndLoad();
-    _timer = Timer.periodic(
-      const Duration(seconds: 1),
-      (_) => updateWaktu(),
-    );
+
+    timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final now = DateTime.now();
+      setState(() {
+        tanggal = DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(now);
+        jam = DateFormat('HH:mm').format(now);
+      });
+    });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    timer?.cancel();
     super.dispose();
   }
   
   void updateWaktu() {
     final now = DateTime.now();
+    if (!mounted) return;
 
     setState(() {
-      jam = DateFormat("HH:mm").format(now);
-      tanggal = DateFormat("dd MMM yyyy").format(now);
+      tanggal = DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(now);
+      jam = DateFormat('HH:mm').format(now);
     });
   }
   // Fungsi Cek Login & Ambil Data dari SharedPreferences
@@ -143,10 +148,11 @@ class _ProfilPageState extends State<ProfilPage>
         errorMessage = "Gagal koneksi ke server";
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
-        isLoadingRiwayat = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoadingRiwayat = false;
+        });
+      }
     }
   }
   // Helper Formatter
@@ -320,14 +326,14 @@ class _ProfilPageState extends State<ProfilPage>
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: const Color.fromRGBO(255, 255, 255, 0.2),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.white.withOpacity(0.5),
+          color: const Color.fromRGBO(255, 255, 255, 0.5),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: const Color.fromRGBO(0, 0, 0, 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -337,7 +343,7 @@ class _ProfilPageState extends State<ProfilPage>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            namaUser ?? "-",
+            "Hi, $namaUser",
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -349,13 +355,14 @@ class _ProfilPageState extends State<ProfilPage>
               Text(
                 jam,
                 style: const TextStyle(
+                  fontSize: 15,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
                 tanggal,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 14,
                   color: Colors.black54,
                 ),
               ),
@@ -373,7 +380,7 @@ class _ProfilPageState extends State<ProfilPage>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green.withOpacity(0.5)),
+        border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
       ),
       child: Column(
         children: [
@@ -440,7 +447,7 @@ class _ProfilPageState extends State<ProfilPage>
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.green.withOpacity(0.5)),
+            border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
           ),
           child: Row(
             children: [
@@ -666,7 +673,7 @@ class _ProfilPageState extends State<ProfilPage>
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.green.withOpacity(0.5)),
+          border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
         ),
         child: Row(
           children: [
@@ -701,7 +708,7 @@ class _ProfilPageState extends State<ProfilPage>
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.green.withOpacity(0.5)),
+          border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
         ),
         child: Row(
           children: [
@@ -738,7 +745,7 @@ class _ProfilPageState extends State<ProfilPage>
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.green.withOpacity(0.5)),
+          border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
         ),
         child: Row(
           children: [

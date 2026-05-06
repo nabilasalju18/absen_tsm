@@ -62,9 +62,13 @@ class _CameraPageState extends State<CameraPage> {
 
       setState(() => isTakingPicture = false);
 
-      Navigator.pop(context, image.path);
+      if (mounted) {
+        Navigator.pop(context, image.path);
+      }
     } catch (e) {
-      print("ERROR CAMERA: $e");
+      setState(() {
+        isTakingPicture = false;
+      });
     }
   }
 
@@ -83,7 +87,7 @@ class _CameraPageState extends State<CameraPage> {
                 /// efek flash putih
                 if (isTakingPicture)
                   Container(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                   ),
 
                 /// tombol capture

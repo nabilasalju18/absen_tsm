@@ -40,8 +40,6 @@ class _ScannerPageState extends State<ScannerPage> {
 
   setState(() => isScanned = true);
 
-  print("SCANNER KIRIM: $code"); // 🔥 WAJIB
-
   await controller.stop();
 
   if (!mounted) return;
@@ -68,7 +66,7 @@ class _ScannerPageState extends State<ScannerPage> {
 
           if (isScanned)
             Container(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
               child: const Center(
                 child: Text(
                   "Scan berhasil",

@@ -128,14 +128,14 @@ class _HomePageContentState extends State<HomePageContent> {
 }
 
   void updateWaktu() {
-  final now = DateTime.now();
-  if (!mounted) return;
+    final now = DateTime.now();
+    if (!mounted) return;
 
-  setState(() {
-    tanggal = DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(now);
-    jam = DateFormat('HH:mm').format(now);
-  });
-}
+    setState(() {
+      tanggal = DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(now);
+      jam = DateFormat('HH:mm').format(now);
+    });
+  }
 
   Future<void> _showDialog(String message) async {
     if (!context.mounted) return;
@@ -150,7 +150,9 @@ class _HomePageContentState extends State<HomePageContent> {
 
     await Future.delayed(const Duration(seconds: 2));
 
-    if (context.mounted && Navigator.canPop(context)) {
+    if (!mounted) return;
+    
+    if (Navigator.canPop(context)) {
       Navigator.pop(context);
     }
   }
@@ -166,7 +168,6 @@ class _HomePageContentState extends State<HomePageContent> {
   Future<void> loadCabang() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? c = prefs.getString("cabangDevice");
-    print("Data Cabang di Home: $c"); // Cek di console
     setState(() {
       cabangDevice = c;
     });
@@ -230,12 +231,10 @@ class _HomePageContentState extends State<HomePageContent> {
       isValidAbsen = false;
     });
 
-    print("HASIL SCAN: [$code]");
-
-    // ⏳ kasih delay dikit biar user lihat
+    //  kasih delay dikit biar user lihat
     await Future.delayed(const Duration(milliseconds: 500));
 
-    // 🔥 BARU VALIDASI
+    //  BARU VALIDASI
     final isValid = await validasiKode(code);
 
     if (!mounted) return;
@@ -251,7 +250,7 @@ class _HomePageContentState extends State<HomePageContent> {
     
     final safeKode = kode.trim();
 
-    // ❌ ringan → SnackBar
+    //  ringan → SnackBar
     if (safeKode.isEmpty) {
       _showMessage("Kode kosong");
       return false;
@@ -266,9 +265,6 @@ class _HomePageContentState extends State<HomePageContent> {
         },
       );
 
-      print("KODE DIKIRIM: [$safeKode]");
-      print("RESPONSE: ${response.body}");
-
       if (!mounted) return false;
 
       // ❌ server error → dialog (penting)
@@ -279,7 +275,7 @@ class _HomePageContentState extends State<HomePageContent> {
 
       final data = jsonDecode(response.body);
 
-      // ❌ gagal dari backend → dialog (WAJIB)
+      // gagal dari backend → dialog (WAJIB)
       if (data['status'] != 'success') {
         final message = data['message'] ?? "Kode tidak valid";
 
@@ -299,7 +295,7 @@ class _HomePageContentState extends State<HomePageContent> {
 
       if (!mounted) return false;
 
-      // ✅ SUCCESS (tidak perlu dialog)
+      // SUCCESS (tidak perlu dialog)
       setState(() {
         namaUser = data['nama'];
         kodeAbsen = data['user_id'];
@@ -386,21 +382,6 @@ class _HomePageContentState extends State<HomePageContent> {
     inputFocus.unfocus();
     FocusScope.of(context).requestFocus(FocusNode());
 
-    if (!isValidAbsen) {
-     showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Text("Scan atau Input Manual dulu"),
-      ),
-    );
-
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pop(context);
-    });
-      return;
-    }
-
     if (!isCameraReady) {
       showDialog(
         context: context,
@@ -411,7 +392,9 @@ class _HomePageContentState extends State<HomePageContent> {
       );
 
       Future.delayed(const Duration(seconds: 2), () {
-        Navigator.pop(context);
+        if (mounted) {
+          Navigator.pop(context);
+        }
       });
       return;
     }
@@ -431,73 +414,71 @@ class _HomePageContentState extends State<HomePageContent> {
         );
 
         Future.delayed(const Duration(seconds: 2), () {
-          Navigator.pop(context);
+          if (mounted) {
+            Navigator.pop(context);
+          }
         });
         return;
       }
 
-      // 🔥 STOP CAMERA
+      //  STOP CAMERA
       if (cameraController.value.isInitialized) {
         await cameraController.stop();
       }
+
+      if (!mounted) return;
 
       final path = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => CameraPage(cameras: widget.cameras),
         ),
-      );
+      ) as String?;
 
-      // 🔥 PAKSA MATI LAGI SETELAH BALIK
+      //  PAKSA MATI LAGI SETELAH BALIK
       await Future.delayed(const Duration(milliseconds: 200));
+      if (!mounted) return;
       inputFocus.unfocus();
-      FocusScope.of(context).requestFocus(FocusNode());
+      if (mounted) {
+        FocusScope.of(context).requestFocus(FocusNode());
+      }
 
       if (!mounted) return;
-
       if (path != null && path.toString().isNotEmpty) {
         final file = File(path);
 
         if (await file.exists()) {
+          if (!mounted) return;
           setState(() {
             fotoFile = file;
           });
-
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => const AlertDialog(
-              content: Text("Foto Berhasil Diambil"),
-            ),
-          );
-
-          Future.delayed(const Duration(seconds: 2), () {
-            Navigator.pop(context);
-          });
         } else {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => const AlertDialog(
-              content: Text("File foto tidak ditemukan"),
-            ),
-          );
-
+          if (mounted) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => const AlertDialog(
+                content: Text("File foto tidak ditemukan"),
+              ),
+            );
+          }
           Future.delayed(const Duration(seconds: 2), () {
-            Navigator.pop(context);
+            if (mounted) Navigator.pop(context);
           });
         }
       } else {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const AlertDialog(
-            content: Text("Foto dibatalkan"),
-          ),
-        );
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const AlertDialog(
+              content: Text("Foto dibatalkan"),
+            ),
+          );
+        }
 
         Future.delayed(const Duration(seconds: 2), () {
-          Navigator.pop(context);
+          if (mounted) Navigator.pop(context);
         });
       }
 
@@ -525,12 +506,6 @@ class _HomePageContentState extends State<HomePageContent> {
 
     final safeKode = kodeAbsen?.trim();
     final safeFoto = fotoFile;
-
-    // VALIDASI AWAL
-    if (!bolehAbsen) {
-      _showMessage("Kamu di luar area absensi");
-      return;
-    }
 
     if (safeKode == null || safeKode.isEmpty) {
       _showMessage("QR belum diisi / belum scan");
@@ -575,8 +550,6 @@ class _HomePageContentState extends State<HomePageContent> {
 
       final data = jsonDecode(response.body);
       final message = data['message'] ?? "Tidak ada pesan";
-
-      print("ABSEN RESPONSE: $data");
 
       //  ERROR
       if (data['status'] == 'error') {
@@ -647,7 +620,7 @@ class _HomePageContentState extends State<HomePageContent> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
 
-      if (!context.mounted) return;
+      if (!mounted) return;
 
       Navigator.pushAndRemoveUntil(
         context,
@@ -696,10 +669,10 @@ class _HomePageContentState extends State<HomePageContent> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.white.withOpacity(0.5),
+          color: Colors.white.withValues(alpha: 0.5),
           width: 1,
         ),
       ),
@@ -906,7 +879,7 @@ class _HomePageContentState extends State<HomePageContent> {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -979,7 +952,7 @@ class _HomePageContentState extends State<HomePageContent> {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -1090,7 +1063,7 @@ class _HomePageContentState extends State<HomePageContent> {
       borderRadius: BorderRadius.circular(20),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.05),
+          color: Colors.black.withValues(alpha: 0.5),
           blurRadius: 10,
         ),
       ],
@@ -1168,4 +1141,5 @@ class _HomePageContentState extends State<HomePageContent> {
     ),
   );
 }
+
 }

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:intl/intl.dart'; // Wajib ada untuk menggunakan DateFormat
+import 'package:intl/intl.dart';
 
 class RekapCabangBulananContent extends StatefulWidget {
-  final String cabang; // Cabang user yang sedang login
+  final String cabang;
   const RekapCabangBulananContent({super.key, required this.cabang});
 
   @override
@@ -19,7 +19,7 @@ class _RekapCabangBulananContentState extends State<RekapCabangBulananContent> {
   @override
   void initState() {
     super.initState();
-    _fetchRekapBulanan();
+    _fetchRekap();
   }
 
   Future<void> _pickMonth() async {
@@ -27,82 +27,98 @@ class _RekapCabangBulananContentState extends State<RekapCabangBulananContent> {
       'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
       'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
     ];
-   await showDialog(
+
+    await showDialog(
       context: context,
-      builder: (BuildContext context){
-        return AlertDialog(
-          title: const Text("Pilih Bulan", textAlign: TextAlign.center),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: GridView.builder(
-              shrinkWrap: true,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 1.5,
-              ),
-              itemCount: 12,
-              itemBuilder: (context, index) {
-                return InkWell(
-                  onTap: () {
-                    setState(() {
-                      // Update _selectedDate hanya bulan dan tahunnya
-                      _selectedDate = DateTime(_selectedDate.year, index + 1);
-                      _isLoading = true;
-                    });
-                    Navigator.pop(context);
-                    _fetchRekapBulanan(); // Panggil API bulanan
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: _selectedDate.month == (index + 1) 
-                          ? Colors.green 
-                          : Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Text(
-                        months[index].substring(0, 3), // Ambil 3 huruf aja (Jan, Feb, dst)
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: _selectedDate.month == (index + 1) 
-                              ? Colors.white 
-                              : Colors.green.shade800,
-                        ),
+      builder: (BuildContext dialogContext) => AlertDialog( // Gunakan dialogContext
+        title: const Text("Pilih Bulan", textAlign: TextAlign.center),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        content: SizedBox(
+          width: double.maxFinite, // Mencegah error layout
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(), // Dialog biasanya tidak scrollable di gridnya
+            itemCount: 12,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              childAspectRatio: 1.5,
+            ),
+            itemBuilder: (ctx, index) {
+              final isSelected = _selectedDate.month == (index + 1);
+              
+              return InkWell(
+                onTap: () {
+                  setState(() {
+                    // Tambahkan hari ke-1 untuk menghindari bug tanggal 31
+                    _selectedDate = DateTime(_selectedDate.year, index + 1, 1);
+                    _isLoading = true;
+                  });
+                  Navigator.pop(dialogContext); // Tutup dialog dengan benar
+                  _fetchRekap();
+                },
+                child: Container(
+                  margin: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.green : Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      months[index].substring(0, 3),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? Colors.white : Colors.green.shade800,
                       ),
                     ),
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  Future<void> _fetchRekapBulanan() async {
-    try {
-      // Format tanggal ke YYYY-MM-DD
-      String formattedDate = "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
+  Future<void> _fetchRekap() async {
+  // Pastikan loading aktif sebelum mulai
+  if (!mounted) return;
+  setState(() => _isLoading = true);
 
-      final response = await http.get(
-        Uri.parse("http://192.168.1.51/absensi_karyawan/rekabcabangharian.php?cabang=${Uri.encodeComponent(widget.cabang)}&tanggal=$formattedDate"),
-      );
+  try {
+    // Gunakan Uri object agar lebih rapi dan aman
+final url = Uri.parse(
+  "http://192.168.1.51/absensi_karyawan/rekapcabangbulanan.php"
+  "?cabang=${Uri.encodeComponent(widget.cabang)}"
+  "&bulan=${_selectedDate.month}"
+  "&tahun=${_selectedDate.year}"
+);
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          _rekapData = data['data'] ?? [];
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      print("Error: $e");
+    final response = await http.get(url).timeout(const Duration(seconds: 10));
+
+    // Cek lagi apakah widget masih ada di layar setelah nunggu response
+    if (!mounted) return;
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      setState(() {
+        _rekapData = data['data'] ?? [];
+        _isLoading = false;
+      });
+    } else {
+      throw "Gagal memuat data (Status: ${response.statusCode})";
     }
+  } catch (e) {
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    
+    // Kasih feedback ke user
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Terjadi kesalahan: $e")),
+    );
+    debugPrint("Error Fetch: $e");
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -118,57 +134,52 @@ class _RekapCabangBulananContentState extends State<RekapCabangBulananContent> {
                   _buildHeaderRekap(),
                   _rekapData.isEmpty
                       ? Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(20),
-                          color: Colors.white,
-                          child: const Text("Tidak ada data hari ini", textAlign: TextAlign.center),
-                        )
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        color: Colors.white,
+                        child: const Text("Data tidak ditemukan", textAlign: TextAlign.center),
+                      )
                       : _buildListRekap(),
                 ],
               ),
-            ),
+          ),
     );
   }
 
   Widget _buildFilterBulan() {
     return InkWell(
-      onTap: _pickMonth, // Fungsi untuk buka kalender
+      onTap: _pickMonth,
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2), // Efek transparan mirip profil
+          color: const Color.fromRGBO(255, 255, 255, 0.2),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: Colors.white.withOpacity(0.5),
+            color: const Color.fromRGBO(255, 255, 255, 0.5),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: const Color.fromRGBO(0, 0, 0, 0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
           ],
         ),
-        // KIRI
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(
-              child: Text(
-                DateFormat('MMMM yyyy','id_ID').format(_selectedDate),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18, 
-                  color: Colors.black87,
-                ),
+            Text(
+              DateFormat('MMMM yyyy', 'id_ID').format(_selectedDate),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
               ),
             ),
             Icon(
-              Icons.shield_moon_rounded,
+              Icons.calendar_month,
               color: Colors.green.shade800,
-              size: 28,
             ),
           ],
         ),
@@ -181,63 +192,26 @@ class _RekapCabangBulananContentState extends State<RekapCabangBulananContent> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.green.shade700,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(10),
-          topRight: Radius.circular(10),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(10),
         ),
       ),
       child: const Row(
         children: [
-          Expanded(
-            flex: 3,
-            child: Text(
-              "Nama Karyawan",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              "Masuk",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              "Pulang",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              "Poin",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+          Expanded(flex: 2, child: Text("Nama", textAlign: TextAlign.center, style: TextStyle(color: Colors.white))),
+          Expanded(child: Text("Msk", textAlign: TextAlign.center, style: TextStyle(color: Colors.white))),
+          Expanded(child: Text("Plg", textAlign: TextAlign.center, style: TextStyle(color: Colors.white))),
+          Expanded(child: Text("Cuti", textAlign: TextAlign.center, style: TextStyle(color: Colors.white))),
+          Expanded(child: Text("Sakit", textAlign: TextAlign.center, style: TextStyle(color: Colors.white))),
+          Expanded(child: Text("Izin", textAlign: TextAlign.center, style: TextStyle(color: Colors.white))),
+          Expanded(child: Text("Alpa", textAlign: TextAlign.center, style: TextStyle(color: Colors.white))),
+          Expanded(child: Text("Total", textAlign: TextAlign.center, style: TextStyle(color: Colors.white))),
         ],
       ),
     );
   }
 
-  Widget _buildListRekap() {
+ Widget _buildListRekap() {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -246,10 +220,14 @@ class _RekapCabangBulananContentState extends State<RekapCabangBulananContent> {
         final item = _rekapData[index];
 
         final nama = item["nama"]?.toString() ?? "-";
-        final masuk = item["jam_masuk"];
-        final pulang = item["jam_pulang"];
+        final msk = item["msk"]?.toString() ?? "0";
+        final plg = item["plg"]?.toString() ?? "0";
+        final cuti = item["cuti"]?.toString() ?? "0";
+        final sakit = item["sakit"]?.toString() ?? "0";
+        final izin = item["izin"]?.toString() ?? "0";
+        final alpa = item["alpa"]?.toString() ?? "0";
+        final total = item["total"]?.toString() ?? "0";
 
-        bool isComplete = (masuk != null && pulang != null);
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
@@ -266,7 +244,7 @@ class _RekapCabangBulananContentState extends State<RekapCabangBulananContent> {
             children: [
               /// NAMA
               Expanded(
-                flex: 3,
+                flex: 2,
                 child: Text(
                   nama,
                   textAlign: TextAlign.center,
@@ -275,9 +253,9 @@ class _RekapCabangBulananContentState extends State<RekapCabangBulananContent> {
               ),
               /// JAM
               Expanded(
-                flex: 2, 
+                flex: 1, 
                 child: Text(
-                  masuk != null ? masuk.toString().substring(0, 5) : "-", 
+                  msk, 
                   textAlign: TextAlign.center, 
                   style: TextStyle(color: Colors.blue.shade700, 
                   fontSize: 12
@@ -285,9 +263,9 @@ class _RekapCabangBulananContentState extends State<RekapCabangBulananContent> {
                 ),
               ),
               Expanded(
-                flex: 2, 
+                flex: 1, 
                 child: Text(
-                  pulang != null ? pulang.toString().substring(0, 5) : "-", 
+                  plg, 
                   textAlign: TextAlign.center, 
                   style: TextStyle(color: Colors.blue.shade700, 
                   fontSize: 12
@@ -295,14 +273,53 @@ class _RekapCabangBulananContentState extends State<RekapCabangBulananContent> {
                 ),
               ),
               Expanded(
-              flex: 2,
-              child: isComplete 
-                ? const Icon(Icons.check_circle, 
-                color: Colors.green, 
-                size: 20) 
-                : const Text(
-                  "0", textAlign: TextAlign.center, 
-                  style: TextStyle(color: Colors.grey)
+                flex: 1,
+                child: Text(
+                  cuti,
+                  textAlign: TextAlign.center, 
+                    style: TextStyle(color: Colors.blue.shade700, 
+                    fontSize: 12
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  sakit,
+                  textAlign: TextAlign.center, 
+                    style: TextStyle(color: Colors.blue.shade700, 
+                    fontSize: 12
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  izin,
+                  textAlign: TextAlign.center, 
+                    style: TextStyle(color: Colors.blue.shade700, 
+                    fontSize: 12
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  alpa,
+                  textAlign: TextAlign.center, 
+                    style: TextStyle(color: Colors.blue.shade700, 
+                    fontSize: 12
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  total,
+                  textAlign: TextAlign.center, 
+                    style: TextStyle(color: Colors.blue.shade700, 
+                    fontSize: 12
+                  ),
                 ),
               ),
             ],

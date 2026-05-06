@@ -54,10 +54,19 @@ class _RekapCabangTotalContentState extends State<RekapCabangTotalContent> {
           _rekapData = data['data'] ?? [];
           _isLoading = false;
         });
+      } else {
+        setState(() {
+          _rekapData = [];
+          _isLoading = false;
+        });
+        debugPrint('Failed to load rekap: ${response.statusCode}');
       }
     } catch (e) {
-      setState(() => _isLoading = false);
-      print("Error: $e");
+      setState(() {
+        _rekapData = [];
+        _isLoading = false;
+      });
+      debugPrint('Error: $e');
     }
   }
 
@@ -95,14 +104,14 @@ class _RekapCabangTotalContentState extends State<RekapCabangTotalContent> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2), // Efek transparan mirip profil
+          color: const Color.fromRGBO(255, 255, 255, 0.2), 
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: Colors.white.withOpacity(0.5),
+            color: const Color.fromRGBO(255, 255, 255, 0.5),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: const Color.fromRGBO(0, 0, 0, 0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),

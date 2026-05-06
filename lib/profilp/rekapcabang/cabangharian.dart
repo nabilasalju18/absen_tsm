@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:intl/intl.dart'; // Wajib ada untuk menggunakan DateFormat
 
 class RekapCabangHarianContent extends StatefulWidget {
-  final String cabang; // Cabang user yang sedang login
+  final String cabang;
   const RekapCabangHarianContent({super.key, required this.cabang});
 
   @override
@@ -57,7 +57,7 @@ class _RekapCabangHarianContentState extends State<RekapCabangHarianContent> {
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      print("Error: $e");
+      debugPrint("Error: $e");
     }
   }
 
@@ -96,14 +96,14 @@ class _RekapCabangHarianContentState extends State<RekapCabangHarianContent> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2), // Efek transparan mirip profil
+          color: const Color.fromRGBO(255, 255, 255, 0.2), 
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: Colors.white.withOpacity(0.5),
+            color: const Color.fromRGBO(255, 255, 255, 0.5),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: const Color.fromRGBO(0, 0, 0, 0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),

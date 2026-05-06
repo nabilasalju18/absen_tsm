@@ -199,7 +199,7 @@ Widget build(BuildContext context) {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: DropdownButtonFormField<String>(
-                  value: _selectedRole,
+                  initialValue: _selectedRole,
                   decoration: const InputDecoration(
                     labelText: 'Role',
                     border: OutlineInputBorder(),
@@ -222,7 +222,7 @@ Widget build(BuildContext context) {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: DropdownButtonFormField<String>(
-                  value: _selectedStatus,
+                  initialValue: _selectedStatus,
                   decoration: const InputDecoration(
                     labelText: 'Status',
                     border: OutlineInputBorder(),
@@ -245,7 +245,7 @@ Widget build(BuildContext context) {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: DropdownButtonFormField<String>(
-                  value: _selectedCabang,
+                  initialValue: _selectedCabang,
                   decoration: const InputDecoration(
                     labelText: 'Cabang',
                     border: OutlineInputBorder(),

@@ -36,9 +36,9 @@ class _RekapCabangPageState extends State<RekapCabangPage> {
                 setState(() => _currentPage = index);
               },
               children: [
-                RekapCabangHarianContent(cabang: widget.cabang),  // Halaman 1
-                RekapCabangBulananContent(cabang: widget.cabang), // Halaman 2
-                RekapCabangTotalContent(cabang: widget.cabang),    // Halaman 3
+                RekapCabangHarianContent(cabang: widget.cabang),  
+                RekapCabangBulananContent(cabang: widget.cabang), 
+                RekapCabangTotalContent(cabang: widget.cabang), 
               ],
             ),
           ),
