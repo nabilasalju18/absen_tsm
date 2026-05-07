@@ -1,3 +1,4 @@
+import 'package:absensi/main.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:camera/camera.dart';
@@ -378,129 +379,52 @@ class _HomePageContentState extends State<HomePageContent> {
   }
 
   Future<void> ambilFoto() async {
-    // 🔥 MATIKAN KEYBOARD TOTAL
     inputFocus.unfocus();
     FocusScope.of(context).requestFocus(FocusNode());
 
-    if (!isCameraReady) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const AlertDialog(
-          content: Text("Kamera Belum Siap"),
-        ),
-      );
-
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          Navigator.pop(context);
-        }
-      });
-      return;
-    }
-
     if (isPickingImage) return;
-
     setState(() => isPickingImage = true);
 
     try {
-      if (widget.cameras.isEmpty) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const AlertDialog(
-            content: Text("Kamera tidak tersedia"),
-          ),
-        );
-
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            Navigator.pop(context);
-          }
-        });
-        return;
-      }
-
-      //  STOP CAMERA
+      // 1. DISPOSE total controller di halaman ini sebelum pindah
+      // Menggunakan stop() terkadang tidak cukup melepaskan hardware lock
       if (cameraController.value.isInitialized) {
-        await cameraController.stop();
+        await cameraController.dispose(); 
       }
 
       if (!mounted) return;
 
+      // 2. Tunggu hasil dari CameraPage
       final path = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => CameraPage(cameras: widget.cameras),
         ),
-      ) as String?;
-
-      //  PAKSA MATI LAGI SETELAH BALIK
-      await Future.delayed(const Duration(milliseconds: 200));
-      if (!mounted) return;
-      inputFocus.unfocus();
-      if (mounted) {
-        FocusScope.of(context).requestFocus(FocusNode());
-      }
-
-      if (!mounted) return;
-      if (path != null && path.toString().isNotEmpty) {
-        final file = File(path);
-
-        if (await file.exists()) {
-          if (!mounted) return;
-          setState(() {
-            fotoFile = file;
-          });
-        } else {
-          if (mounted) {
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => const AlertDialog(
-                content: Text("File foto tidak ditemukan"),
-              ),
-            );
-          }
-          Future.delayed(const Duration(seconds: 2), () {
-            if (mounted) Navigator.pop(context);
-          });
-        }
-      } else {
-        if (mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => const AlertDialog(
-              content: Text("Foto dibatalkan"),
-            ),
-          );
-        }
-
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) Navigator.pop(context);
-        });
-      }
-
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error kamera: $e")),
       );
-    } finally {
-      try {
-        if (cameraController.value.isInitialized) {
-          await cameraController.start();
-        }
-      } catch (_) {}
 
+      // 3. Setelah balik, inisialisasi ulang controller halaman utama jika perlu
+      // Tapi tunggu sebentar agar hardware kamera dilepaskan oleh CameraPage
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      /* PANGGIL FUNGSI INIT KAMERA HALAMAN UTAMA LAGI DISINI 
+        Misal: await initMainPageCamera(); 
+      */
+
+      if (path != null && path.isNotEmpty) {
+        File file = File(path);
+        if (await file.exists()) {
+          setState(() => fotoFile = file);
+        }
+      }
+    } catch (e) {
+      debugPrint("Error di ambilFoto: $e");
+    } finally {
       if (mounted) {
         setState(() => isPickingImage = false);
       }
     }
   }
-  
+
   Future<void> kirimAbsensi() async {
     if (isLoading) return;
 
@@ -782,7 +706,8 @@ class _HomePageContentState extends State<HomePageContent> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => IzinPage()),
+                      MaterialPageRoute(builder: (context) => IzinPage(cameras: availableCamerasList)),
+                      
                     );
                   },
                 ),

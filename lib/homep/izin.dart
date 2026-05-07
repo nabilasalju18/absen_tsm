@@ -4,29 +4,47 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:absensi/profilp/loginprofil.dart';
+import 'package:camera/camera.dart';
+import 'camera.dart';
+import 'dart:io';
 
 class IzinPage extends StatefulWidget {
-  const IzinPage({super.key});
+  final List<CameraDescription> cameras;
+  const IzinPage({
+    super.key, 
+    required this.cameras
+  });
 
   @override
   State<IzinPage> createState() => _IzinPageState();
 }
 
 class _IzinPageState extends State<IzinPage> {
-  final String baseUrl = "http://192.168.1.51/absensi_karyawan/izin.php";
+  final String baseUrl = "http://192.168.1.51/absensi_karyawan";
 
   String? userId, namaUser;
   String? jenis;
   DateTime selectedDate = DateTime.now();
   TextEditingController keteranganController = TextEditingController();
-
-  bool isLoading = false;
+  bool isCameraReady = false;
+  bool isLoading = true;
+  File? fotoFile;
+  bool isPickingImage = false;
 
   @override
   void initState() {
     super.initState();
+
     checkLoginAndLoad();
     getUser();
+
+    isCameraReady = widget.cameras.isNotEmpty;
+  }
+
+  @override
+  void dispose() {
+    keteranganController.dispose();
+    super.dispose();
   }
 
   Future<void> checkLoginAndLoad() async {
@@ -66,6 +84,34 @@ class _IzinPageState extends State<IzinPage> {
 
 }
 
+  Future<void> ambilFoto() async {
+    if (isPickingImage) return;
+    setState(() => isPickingImage = true);
+
+    try {
+      final path = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CameraPage(cameras: widget.cameras),
+        ),
+      );
+
+      await Future.delayed(const Duration(milliseconds: 300));
+        if (path != null && path.isNotEmpty) {
+        File file = File(path);
+        if (await file.exists()) {
+          setState(() => fotoFile = file);
+        }
+      }
+    } catch (e) {
+      debugPrint("Error di ambilFoto: $e");
+    } finally {
+      if (mounted) {
+        setState(() => isPickingImage = false);
+      }
+    }
+  }
+  
   Future<void> submitIzin() async {
     if (userId == null || userId!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -86,16 +132,17 @@ class _IzinPageState extends State<IzinPage> {
     });
 
     try {
-      final response = await http.post(
-        Uri.parse("$baseUrl/izin.php"),
-        body: {
-          "user_id": userId, 
-          "jenis": jenis!,
-          "tanggal": DateFormat('yyyy-MM-dd').format(selectedDate),
-          "keterangan": keteranganController.text,
-        },
-      );
+      var request = http.MultipartRequest('POST', Uri.parse("$baseUrl/izin.php"));
+        request.fields['user_id'] = userId!;
+        request.fields['jenis'] = jenis!;
+        request.fields['tanggal'] = DateFormat('yyyy-MM-dd').format(selectedDate);
+        request.fields['keterangan'] = keteranganController.text.trim();
+      if (fotoFile != null) {
+        request.files.add(await http.MultipartFile.fromPath('bukti', fotoFile!.path));
+      }
 
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
       final data = jsonDecode(response.body);
 
       if (!mounted) return;
@@ -141,142 +188,185 @@ class _IzinPageState extends State<IzinPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 149, 246, 157),
+      backgroundColor: const Color.fromARGB(255, 149, 246, 157), // Hijau sangat pudar agar bersih
       appBar: AppBar(
-        title: const Text("Form Pengajuan Izin"),
+        title: const Text("Form Pengajuan Izin", 
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: Colors.white,
         elevation: 0,
+        centerTitle: true,
         foregroundColor: Colors.black,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header Nama (Biar User tau sistem sudah kenal mereka)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color.fromRGBO(255, 255, 255, 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color.fromRGBO(255, 255, 255, 0.5),
+        child: Column(
+          children: [
+            // Header Nama (Tetap di atas, tidak ikut scroll)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color.fromRGBO(255, 255, 255, 0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color.fromRGBO(255, 255, 255, 0.5),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color.fromRGBO(0, 0, 0, 0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color.fromRGBO(0, 0, 0, 0.05),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      "Hi, $namaUser",
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                    ),
-                  ],
-                ),
+                ],
               ),
-              
-              const SizedBox(height: 20),
+              child: Row(
+                children: [
+                  Text(
+                    "Hi, $namaUser",
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                ],
+              ),
+            ),
 
-              Expanded(
-                child: ListView(
-                  children: [
-                    const Text("Jenis Izin", style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      initialValue: jenis,
-                      hint: const Text("Pilih Jenis Izin"),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+            // Form Field (Scrollable)
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                children: [
+                  _buildLabel("Jenis Izin"),
+                  DropdownButtonFormField<String>(
+                    initialValue: jenis, // Gunakan value, bukan initialValue agar reaktif
+                    hint: const Text("Pilih Jenis Izin"),
+                    decoration: _inputDecoration(),
+                    items: const [
+                      DropdownMenuItem(value: "Sakit", child: Text("Sakit")),
+                      DropdownMenuItem(value: "Cuti", child: Text("Cuti")),
+                      DropdownMenuItem(value: "Izin", child: Text("Izin")),
+                    ],
+                    onChanged: (value) => setState(() => jenis = value),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  _buildLabel("Tanggal Izin"),
+                  InkWell(
+                    onTap: pilihTanggal,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: "Sakit", child: Text("Sakit")),
-                        DropdownMenuItem(value: "Cuti", child: Text("Cuti")),
-                        DropdownMenuItem(value: "Izin", child: Text("Izin")),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          jenis = value;
-                        });
-                      },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    const Text("Tanggal Izin", style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    InkWell(
-                      onTap: pilihTanggal,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade400),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(DateFormat('dd MMMM yyyy').format(selectedDate)),
-                            const Icon(Icons.calendar_month, color: Colors.grey),
-                          ],
-                        ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(DateFormat('dd MMMM yyyy').format(selectedDate),
+                              style: const TextStyle(fontSize: 15)),
+                          const Icon(Icons.calendar_month, color: Colors.green),
+                        ],
                       ),
                     ),
+                  ),
 
-                    const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
-                    const Text("Keterangan", style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: keteranganController,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        hintText: "Contoh: Izin bimbingan dosen atau Sakit demam",
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
+                  _buildLabel("Keterangan"),
+                  TextField(
+                    controller: keteranganController,
+                    maxLines: 3,
+                    decoration: _inputDecoration(hint: "Berikan alasan singkat..."),
+                  ),
 
-                    const SizedBox(height: 30),
+                  const SizedBox(height: 20),
 
-                    SizedBox(
+                  _buildLabel("Bukti Foto"),
+                  GestureDetector(
+                    onTap: ambilFoto,
+                    child: Container(
+                      height: 150, // Diberi tinggi tetap agar rapi
                       width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : submitIzin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text("KIRIM LAPORAN", style: TextStyle(fontWeight: FontWeight.bold)),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
                       ),
+                      child: fotoFile != null 
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.file(fotoFile!, fit: BoxFit.cover),
+                          )
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.camera_alt, size: 40, color: Colors.grey[400]),
+                              const SizedBox(height: 8),
+                              Text("Ketuk untuk ambil foto", 
+                                style: TextStyle(color: Colors.grey[600])),
+                            ],
+                          ),
                     ),
-                  ],
-                ),
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  // Button Kirim
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: isLoading ? null : submitIzin,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[600],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: isLoading
+                          ? const SizedBox(
+                              height: 20, 
+                              width: 20, 
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text("KIRIM LAPORAN", 
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
+
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      child: Text(text, 
+        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
+    );
+  }
+
+  InputDecoration _inputDecoration({String? hint}) {
+  return InputDecoration(
+    hintText: hint,
+    filled: true,
+    fillColor: Colors.white,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.grey.shade300),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Colors.green, width: 1.5),
+    ),
+  );
+}
 }

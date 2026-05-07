@@ -11,165 +11,183 @@ class CameraPage extends StatefulWidget {
 }
 
 class _CameraPageState extends State<CameraPage> {
-  int selectedCameraIndex = 0;
-  bool isFlashOn = false;
-  bool isTakingPicture = false;
-
-  late CameraController controller;
-  late Future<void> initializeControllerFuture;
+  CameraController? _controller;
+  int _selectedCameraIndex = 0;
+  bool _isFlashOn = false;
+  bool _isTakingPicture = false;
 
   @override
   void initState() {
     super.initState();
-
-    // default kamera depan kalau ada
-    selectedCameraIndex = widget.cameras.indexWhere(
+    // Default cari kamera depan
+    _selectedCameraIndex = widget.cameras.indexWhere(
       (cam) => cam.lensDirection == CameraLensDirection.front,
     );
+    if (_selectedCameraIndex == -1) _selectedCameraIndex = 0;
 
-    if (selectedCameraIndex == -1) {
-      selectedCameraIndex = 0;
+    _initCurrentCamera();
+  }
+
+  Future<void> _initCurrentCamera() async {
+    // Matikan controller lama jika ada
+    if (_controller != null) {
+      await _controller!.dispose();
     }
 
-    initCamera(widget.cameras[selectedCameraIndex]);
-  }
-
-  Future<void> initCamera(CameraDescription camera) async {
-    controller = CameraController(
-      camera,
+    _controller = CameraController(
+      widget.cameras[_selectedCameraIndex],
       ResolutionPreset.medium,
+      enableAudio: false,
     );
 
-    initializeControllerFuture = controller.initialize();
-    setState(() {});
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> ambilFoto() async {
     try {
-      await initializeControllerFuture;
+      await _controller!.initialize();
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint("Gagal inisialisasi: $e");
+    }
+  }
 
-      setState(() => isTakingPicture = true);
+  Future<void> _switchCamera() async {
+    if (widget.cameras.length < 2 || _isTakingPicture) return;
 
-      final image = await controller.takePicture();
+    // 1. Matikan controller lama
+    if (_controller != null) {
+      await _controller!.dispose();
+    }
 
-      await Future.delayed(const Duration(milliseconds: 100));
+    // 2. KUNCI: Set null agar UI tahu kamera sedang "kosong"
+    // Ini akan mencegah layar merah karena UI tidak akan 
+    // memanggil CameraPreview(_controller!).
+    setState(() {
+      _controller = null; // UI akan menampilkan loading
+      _selectedCameraIndex = (_selectedCameraIndex + 1) % widget.cameras.length;
+    });
 
-      setState(() => isTakingPicture = false);
+    // 3. Inisialisasi kamera baru
+    // Fungsi ini sudah punya setState() internal untuk me-refresh UI
+    // saat kamera baru sudah siap.
+    await _initCurrentCamera();
+  }
 
+  Future<void> _ambilFoto() async {
+    if (_controller == null || !_controller!.value.isInitialized || _isTakingPicture) return;
+
+    try {
+      setState(() => _isTakingPicture = true);
+      final image = await _controller!.takePicture();
+      
       if (mounted) {
         Navigator.pop(context, image.path);
       }
     } catch (e) {
-      setState(() {
-        isTakingPicture = false;
-      });
+      debugPrint("Error capture: $e");
+    } finally {
+      if (mounted) setState(() => _isTakingPicture = false);
     }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: FutureBuilder(
-        future: initializeControllerFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            return Stack(
-              children: [
-                CameraPreview(controller),
-
-                /// efek flash putih
-                if (isTakingPicture)
-                  Container(
-                    color: Colors.white.withValues(alpha: 0.8),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // --- HEADER (Hitung mundur / Flash / Back) ---
+            Container(
+              height: 60,
+              color: Colors.black,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
                   ),
+                  IconButton(
+                    icon: Icon(
+                      _isFlashOn ? Icons.flash_on : Icons.flash_off,
+                      color: _isFlashOn ? Colors.yellow : Colors.white,
+                    ),
+                    onPressed: () async {
+                      if (_controller == null) return;
+                      _isFlashOn = !_isFlashOn;
+                      await _controller!.setFlashMode(
+                        _isFlashOn ? FlashMode.torch : FlashMode.off,
+                      );
+                      setState(() {});
+                    },
+                  ),
+                ],
+              ),
+            ),
 
-                /// tombol capture
-                Positioned(
-                  bottom: 40,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: GestureDetector(
-                      onTap: ambilFoto,
+            // --- AREA KAMERA (Tengah) ---
+            Expanded(
+              child: Center(
+                child: (_controller != null && _controller!.value.isInitialized)
+                    ? AspectRatio(
+                        aspectRatio: 1 / _controller!.value.aspectRatio,
+                        child: Stack(
+                          children: [
+                            CameraPreview(_controller!),
+                            if (_isTakingPicture)
+                              Container(color: Colors.black54),
+                          ],
+                        ),
+                      )
+                    : const CircularProgressIndicator(color: Colors.white),
+              ),
+            ),
+
+            // --- FOOTER (Capture & Switch) ---
+            Container(
+              height: 150,
+              color: Colors.black,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Spacing supaya simetris
+                  const SizedBox(width: 60),
+
+                  // Tombol Capture
+                  GestureDetector(
+                    onTap: _ambilFoto,
+                    child: Container(
+                      height: 80,
+                      width: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
+                      ),
                       child: Container(
-                        width: 70,
-                        height: 70,
-                        decoration: BoxDecoration(
+                        margin: const EdgeInsets.all(5),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 4),
                         ),
                       ),
                     ),
                   ),
-                ),
 
-                /// switch kamera
-                Positioned(
-                  bottom: 40,
-                  right: 20,
-                  child: IconButton(
-                    icon: const Icon(Icons.cameraswitch,
-                        color: Colors.white, size: 30),
-                    onPressed: () async {
-                      selectedCameraIndex =
-                          (selectedCameraIndex + 1) % widget.cameras.length;
-
-                      await controller.dispose();
-                      await initCamera(
-                          widget.cameras[selectedCameraIndex]);
-                    },
+                  // Tombol Switch
+                  IconButton(
+                    icon: const Icon(Icons.cameraswitch, color: Colors.white, size: 30),
+                    onPressed: _switchCamera,
                   ),
-                ),
-
-                /// tombol back
-                Positioned(
-                  top: 40,
-                  left: 20,
-                  child: IconButton(
-                    icon:
-                        const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ),
-
-                /// flash
-                Positioned(
-                  top: 40,
-                  right: 20,
-                  child: IconButton(
-                    icon: Icon(
-                      isFlashOn
-                          ? Icons.flash_on
-                          : Icons.flash_off,
-                      color: Colors.white,
-                    ),
-                    onPressed: () async {
-                      isFlashOn = !isFlashOn;
-
-                      await controller.setFlashMode(
-                        isFlashOn
-                            ? FlashMode.torch
-                            : FlashMode.off,
-                      );
-
-                      setState(() {});
-                    },
-                  ),
-                ),
-              ],
-            );
-          } else {
-            return const Center(
-                child: CircularProgressIndicator());
-          }
-        },
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
