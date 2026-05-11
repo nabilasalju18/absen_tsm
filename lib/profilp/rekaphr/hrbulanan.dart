@@ -3,15 +3,15 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
 
-class RekapCabangBulananContent extends StatefulWidget {
-  final String cabang;
-  const RekapCabangBulananContent({super.key, required this.cabang});
+class RekapHrBulananContent extends StatefulWidget {
+final String cabang;
+  const RekapHrBulananContent({super.key, required this.cabang});
 
   @override
-  State<RekapCabangBulananContent> createState() => _RekapCabangBulananContentState();
+  State<RekapHrBulananContent> createState() => _RekapHrBulananContentState();
 }
 
-class _RekapCabangBulananContentState extends State<RekapCabangBulananContent> {
+class _RekapHrBulananContentState extends State<RekapHrBulananContent> {
   List _rekapData = [];
   bool _isLoading = true;
   DateTime _selectedDate = DateTime.now();
@@ -88,7 +88,7 @@ class _RekapCabangBulananContentState extends State<RekapCabangBulananContent> {
   try {
     // Gunakan Uri object agar lebih rapi dan aman
 final url = Uri.parse(
-  "http://192.168.1.37/absensi_karyawan/rekapcabangbulanan.php"
+  "http://192.168.1.37/absensi_karyawan/rekaphrbulanan.php"
   "?cabang=${Uri.encodeComponent(widget.cabang)}"
   "&bulan=${_selectedDate.month}"
   "&tahun=${_selectedDate.year}"
@@ -224,9 +224,9 @@ final url = Uri.parse(
         final plg = item["plg"]?.toString() ?? "0";
         final cuti = item["cuti"]?.toString() ?? "0";
         final sakit = item["sakit"]?.toString() ?? "0";
-        final total = item["total"]?.toString() ?? "0";
         final izin = item["izin"]?.toString() ?? "0";
         final alpa = item["alpa"]?.toString() ?? "0";
+        final total = item["total"]?.toString() ?? "0";
 
 
         return Container(
@@ -303,6 +303,7 @@ final url = Uri.parse(
                     style: TextStyle(color: Colors.blue.shade700, 
                     fontSize: 12,
                     fontWeight: FontWeight.bold
+
                   ),
                 ),
               ),

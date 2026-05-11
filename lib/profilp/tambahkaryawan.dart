@@ -13,7 +13,7 @@ class _TambahKaryawanPageState extends State<TambahKaryawanPage> {
   final _formKey = GlobalKey<FormState>();
 
   final String baseUrl =
-      "http://192.168.1.51/absensi_karyawan/tambahkaryawan.php";
+      "http://192.168.1.37/absensi_karyawan/tambahkaryawan.php";
 
   final TextEditingController _namaController = TextEditingController();
   final TextEditingController _userIdController = TextEditingController();

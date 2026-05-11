@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'tambahkaryawan.dart';
 import 'rekapcabang/rekapcabang.dart';
+import 'rekaphr/rekaphr.dart';
 
 class ProfilPage extends StatefulWidget {
   const ProfilPage({super.key});
@@ -18,7 +19,7 @@ class ProfilPage extends StatefulWidget {
 class _ProfilPageState extends State<ProfilPage> 
   with TickerProviderStateMixin {
   final String baseUrl =
-      "http://192.168.1.51/absensi_karyawan/riwayat.php";
+      "http://192.168.1.37/absensi_karyawan/riwayat.php";
   String? userId, namaUser, role, cabang;
   
   bool isLoadingProfil = true;
@@ -699,8 +700,7 @@ class _ProfilPageState extends State<ProfilPage>
   Widget _buildRekabAbsensiAll() {
     return InkWell(
       onTap: () {
-        // Navigasi ke halaman form
-        // Navigator.push(context, MaterialPageRoute(builder: (context) => TambahKaryawanPage()));
+       Navigator.push(context, MaterialPageRoute(builder: (context) => RekapHrPage(cabang: cabang!)));
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(

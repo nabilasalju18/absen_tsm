@@ -1,63 +1,115 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // Wajib ada untuk menggunakan DateFormat
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:intl/intl.dart'; // Wajib ada untuk menggunakan DateFormat
-
-class RekapCabangHarianContent extends StatefulWidget {
+class RekapGajiContent extends StatefulWidget {
   final String cabang;
-  const RekapCabangHarianContent({super.key, required this.cabang});
+  const RekapGajiContent({super.key, required this.cabang});
 
   @override
-  State<RekapCabangHarianContent> createState() => _RekapCabangHarianContentState();
+  State<RekapGajiContent> createState() => _RekapGajiContentState();
 }
 
-class _RekapCabangHarianContentState extends State<RekapCabangHarianContent> {
+class _RekapGajiContentState extends State<RekapGajiContent> {
   List _rekapData = [];
   bool _isLoading = true;
   DateTime _selectedDate = DateTime.now();
-
-  @override
+  final currencyFormatter = NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0);
+@override
   void initState() {
     super.initState();
     _fetchRekap();
   }
 
-  Future<void> _pickDate() async {
-    final DateTime? picked = await showDatePicker(
+  Future<void> _pickMonth() async {
+    List<String> months = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+
+    await showDialog(
       context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2024),
-      lastDate: DateTime.now(),
-      locale: const Locale('id', 'ID'),
+      builder: (BuildContext dialogContext) => AlertDialog( // Gunakan dialogContext
+        title: const Text("Pilih Bulan", textAlign: TextAlign.center),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        content: SizedBox(
+          width: double.maxFinite, // Mencegah error layout
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(), // Dialog biasanya tidak scrollable di gridnya
+            itemCount: 12,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              childAspectRatio: 1.5,
+            ),
+            itemBuilder: (ctx, index) {
+              final isSelected = _selectedDate.month == (index + 1);
+              
+              return InkWell(
+                onTap: () {
+                  setState(() {
+                    // Tambahkan hari ke-1 untuk menghindari bug tanggal 31
+                    _selectedDate = DateTime(_selectedDate.year, index + 1, 1);
+                    _isLoading = true;
+                  });
+                  Navigator.pop(dialogContext); // Tutup dialog dengan benar
+                  _fetchRekap();
+                },
+                child: Container(
+                  margin: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.green : Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      months[index].substring(0, 3),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? Colors.white : Colors.green.shade800,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
     );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-        _isLoading = true; // Jalankan loading lagi
-      });
-      _fetchRekap(); // Panggil API lagi dengan filter tanggal
-    }
   }
 
-  Future<void> _fetchRekap() async {
+
+ Future<void> _fetchRekap() async {
     try {
-      // Format tanggal ke YYYY-MM-DD
-      String formattedDate = "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
+      String bulan = _selectedDate.month.toString();
+      String tahun = _selectedDate.year.toString();
 
       final response = await http.get(
-        Uri.parse("http://192.168.1.37/absensi_karyawan/rekabcabangharian.php?cabang=${Uri.encodeComponent(widget.cabang)}&tanggal=$formattedDate"),
+        Uri.parse(
+          "http://192.168.1.37/absensi_karyawan/rekapgaji.php?bulan=$bulan&tahun=$tahun"
+        ),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
-          _rekapData = data['data'] ?? [];
+          _rekapData = data;
           _isLoading = false;
         });
+      } else {
+        setState(() {
+          _rekapData = [];
+          _isLoading = false;
+        });
+        debugPrint('Failed to load rekap: ${response.statusCode}');
       }
     } catch (e) {
-      setState(() => _isLoading = false);
-      debugPrint("Error: $e");
+      setState(() {
+        _rekapData = [];
+        _isLoading = false;
+      });
+      debugPrint('Error: $e');
     }
   }
 
@@ -65,7 +117,6 @@ class _RekapCabangHarianContentState extends State<RekapCabangHarianContent> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 149, 246, 157),
-
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -90,7 +141,7 @@ class _RekapCabangHarianContentState extends State<RekapCabangHarianContent> {
 
   Widget _buildFilterTanggal() {
     return InkWell(
-      onTap: _pickDate, // Fungsi untuk buka kalender
+      onTap: _pickMonth, // Fungsi untuk buka kalender
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.only(bottom: 16),
@@ -115,7 +166,7 @@ class _RekapCabangHarianContentState extends State<RekapCabangHarianContent> {
           children: [
             Expanded(
               child: Text(
-                DateFormat('EEEE, dd MMMM yyyy','id_ID').format(_selectedDate),
+                DateFormat('MMMM yyyy','id_ID').format(_selectedDate),
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18, // Sesuaikan ukuran font agar muat satu baris
@@ -147,7 +198,7 @@ class _RekapCabangHarianContentState extends State<RekapCabangHarianContent> {
       child: const Row(
         children: [
           Expanded(
-            flex: 3,
+            flex: 4,
             child: Text(
               "Nama Karyawan",
               textAlign: TextAlign.center,
@@ -156,33 +207,11 @@ class _RekapCabangHarianContentState extends State<RekapCabangHarianContent> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-          ),
+          ),   
           Expanded(
-            flex: 2,
+            flex: 4,
             child: Text(
-              "Masuk",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              "Pulang",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              "Poin",
+              "Gaji",
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
@@ -204,10 +233,7 @@ class _RekapCabangHarianContentState extends State<RekapCabangHarianContent> {
         final item = _rekapData[index];
 
         final nama = item["nama"]?.toString() ?? "-";
-        final masuk = item["jam_masuk"];
-        final pulang = item["jam_pulang"];
-
-        bool isComplete = (masuk != null && pulang != null);
+        final gaji = item["gaji"];
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
@@ -222,9 +248,9 @@ class _RekapCabangHarianContentState extends State<RekapCabangHarianContent> {
           ),
           child: Row(
             children: [
-             
+              /// NAMA
               Expanded(
-                flex: 3,
+                flex: 4,
                 child: Text(
                   nama,
                   textAlign: TextAlign.center,
@@ -234,46 +260,26 @@ class _RekapCabangHarianContentState extends State<RekapCabangHarianContent> {
                   ),
                 ),
               ),
-             
+              /// JAM
               Expanded(
-                flex: 2, 
+                flex: 4, 
                 child: Text(
-                  masuk != null ? masuk.toString().substring(0, 5) : "-", 
+                  gaji != null 
+                  ? currencyFormatter.format(int.parse(gaji.toString())) : "-", 
                   textAlign: TextAlign.center, 
-                  style: TextStyle(color: Colors.blue.shade700, 
+                  style: TextStyle(
+                  color: Colors.blue.shade700, 
                   fontSize: 12,
                   fontWeight: FontWeight.bold
                   ),
                 ),
               ),
-          
-              Expanded(
-                flex: 2, 
-                child: Text(
-                  pulang != null ? pulang.toString().substring(0, 5) : "-", 
-                  textAlign: TextAlign.center, 
-                  style: TextStyle(color: Colors.blue.shade700, 
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold
-                  ),
-                ),
-              ),
-              Expanded(
-              flex: 2,
-              child: isComplete 
-                ? const Icon(Icons.check_circle, 
-                color: Colors.green, 
-                size: 20) 
-                : const Text(
-                  "0", textAlign: TextAlign.center, 
-                  style: TextStyle(color: Colors.grey)
-                ),
-              ),
+            
             ],
           ),
         );
       },
     );
   }
-// aku ngantukkk bgt ya allahhhhhh huhu pengen tidurrrrr
+
 }

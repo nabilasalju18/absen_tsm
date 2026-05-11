@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:intl/intl.dart'; // Wajib ada untuk menggunakan DateFormat
+import 'package:intl/intl.dart'; 
 
-class RekapCabangTotalContent extends StatefulWidget {
-  final String cabang; // Cabang user yang sedang login
-  const RekapCabangTotalContent({super.key, required this.cabang});
+class RekapHrHarianContent extends StatefulWidget {
+final String cabang;
+  const RekapHrHarianContent({super.key, required this.cabang});
 
   @override
-  State<RekapCabangTotalContent> createState() => _RekapCabangTotalContentState();
+  State<RekapHrHarianContent> createState() => _RekapHrHarianContentState();
 }
 
-class _RekapCabangTotalContentState extends State<RekapCabangTotalContent> {
+class _RekapHrHarianContentState extends State<RekapHrHarianContent> {
   List _rekapData = [];
   bool _isLoading = true;
   DateTime _selectedDate = DateTime.now();
-
+ 
   @override
   void initState() {
     super.initState();
@@ -45,7 +45,7 @@ class _RekapCabangTotalContentState extends State<RekapCabangTotalContent> {
       String formattedDate = "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
 
       final response = await http.get(
-        Uri.parse("http://192.168.1.51/absensi_karyawan/rekabcabangharian.php?cabang=${Uri.encodeComponent(widget.cabang)}&tanggal=$formattedDate"),
+        Uri.parse("http://192.168.1.37/absensi_karyawan/rekaphrharian.php?cabang=${Uri.encodeComponent(widget.cabang)}&tanggal=$formattedDate"),
       );
 
       if (response.statusCode == 200) {
@@ -54,19 +54,10 @@ class _RekapCabangTotalContentState extends State<RekapCabangTotalContent> {
           _rekapData = data['data'] ?? [];
           _isLoading = false;
         });
-      } else {
-        setState(() {
-          _rekapData = [];
-          _isLoading = false;
-        });
-        debugPrint('Failed to load rekap: ${response.statusCode}');
       }
     } catch (e) {
-      setState(() {
-        _rekapData = [];
-        _isLoading = false;
-      });
-      debugPrint('Error: $e');
+      setState(() => _isLoading = false);
+      debugPrint("Error: $e");
     }
   }
 
@@ -74,6 +65,7 @@ class _RekapCabangTotalContentState extends State<RekapCabangTotalContent> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 149, 246, 157),
+
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -236,17 +228,21 @@ class _RekapCabangTotalContentState extends State<RekapCabangTotalContent> {
                 child: Text(
                   nama,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold
+                  ),
                 ),
               ),
-              /// JAM
+              // JAM
               Expanded(
                 flex: 2, 
                 child: Text(
                   masuk != null ? masuk.toString().substring(0, 5) : "-", 
                   textAlign: TextAlign.center, 
                   style: TextStyle(color: Colors.blue.shade700, 
-                  fontSize: 12
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold
                   ),
                 ),
               ),
@@ -256,8 +252,10 @@ class _RekapCabangTotalContentState extends State<RekapCabangTotalContent> {
                   pulang != null ? pulang.toString().substring(0, 5) : "-", 
                   textAlign: TextAlign.center, 
                   style: TextStyle(color: Colors.blue.shade700, 
-                  fontSize: 12
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold
                   ),
+        //hmmm males bggtttt huhuuuuuuu      
                 ),
               ),
               Expanded(

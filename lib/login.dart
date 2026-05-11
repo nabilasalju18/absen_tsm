@@ -36,7 +36,7 @@ Future<void> loginAbsen() async {
 
   try {
     final response = await http.post(
-      Uri.parse("http://192.168.1.51/absensi_karyawan/login.php?action=login"),
+      Uri.parse("http://192.168.1.37/absensi_karyawan/login.php?action=login"),
       headers: {
         "Content-Type": "application/json",
         "Accept": "application/json"

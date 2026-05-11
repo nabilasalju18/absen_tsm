@@ -27,7 +27,7 @@ class HomePageContent extends StatefulWidget {
 }
 
 class _HomePageContentState extends State<HomePageContent> {
-  final String baseUrl = "http://192.168.1.51/absensi_karyawan";
+  final String baseUrl = "http://192.168.1.37/absensi_karyawan";
 
   final FocusNode inputFocus = FocusNode();
   // controller
@@ -1014,15 +1014,28 @@ class _HomePageContentState extends State<HomePageContent> {
             const SizedBox(width: 16),
 
             /// KANAN → FOTO
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: Colors.grey[200],
-              backgroundImage: fotoFile != null
-                  ? FileImage(fotoFile!) as ImageProvider
-                  : null,
-              child: fotoFile == null
-                  ? const Icon(Icons.person, size: 40)
-                  : null,
+            Expanded(
+              child: GestureDetector(
+                onTap: ambilFoto, 
+                child: Container(
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200], 
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey),
+                  ), 
+                  child: fotoFile != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        fotoFile!,
+                        fit: BoxFit.cover,
+                        width: double.infinity, // Biar menempuh lebar kotak
+                      ),
+                    )
+                  : const Icon(Icons.camera_alt, color: Colors.grey)
+                )
+              ),
             ),
           ],
         ),

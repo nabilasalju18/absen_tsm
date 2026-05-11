@@ -34,7 +34,7 @@ class _LoginProfilPageState extends State<LoginProfilPage> {
 
     try {
       final response = await http.post(
-        Uri.parse("http://192.168.1.51/absensi_karyawan/loginprofil.php?action=login"),
+        Uri.parse("http://192.168.1.37/absensi_karyawan/loginprofil.php?action=login"),
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json"

@@ -20,7 +20,9 @@ class IzinPage extends StatefulWidget {
 }
 
 class _IzinPageState extends State<IzinPage> {
-  final String baseUrl = "http://192.168.1.51/absensi_karyawan";
+  final _formKey = GlobalKey<FormState>();
+  
+  final String baseUrl = "http://192.168.1.37/absensi_karyawan";
 
   String? userId, namaUser;
   String? jenis;
@@ -31,6 +33,9 @@ class _IzinPageState extends State<IzinPage> {
   File? fotoFile;
   bool isPickingImage = false;
 
+  final List<String> _jenis = ['Sakit', 'Izin', 'Cuti'];
+  String? _selectJenis;
+  
   @override
   void initState() {
     super.initState();
@@ -192,110 +197,134 @@ class _IzinPageState extends State<IzinPage> {
       appBar: AppBar(
         title: const Text("Form Pengajuan Izin", 
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        foregroundColor: Colors.black,
+        backgroundColor: const Color.fromARGB(255, 233, 234, 233),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header Nama (Tetap di atas, tidak ikut scroll)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.all(20),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color.fromRGBO(255, 255, 255, 0.2),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color.fromRGBO(255, 255, 255, 0.5),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header Nama (Tetap di atas, tidak ikut scroll)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color.fromRGBO(255, 255, 255, 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color.fromRGBO(255, 255, 255, 0.5),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color.fromRGBO(0, 0, 0, 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color.fromRGBO(0, 0, 0, 0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                child: Row(
+                  children: [
+                    Text(
+                      "Hi, $namaUser",
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                  ],
+                ),
               ),
-              child: Row(
-                children: [
-                  Text(
-                    "Hi, $namaUser",
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+
+              const SizedBox(height: 20),
+
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(255, 222, 250, 223),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: DropdownButtonFormField<String>(
+                  initialValue: _selectJenis,
+                  decoration: const InputDecoration(
+                    labelText: 'Jenis Izin',
+                    border: OutlineInputBorder(),
                   ),
-                ],
+                  items: _jenis
+                      .map((e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(e),
+                          ))
+                      .toList(),
+                  onChanged: (val) => setState(() => _selectJenis = val),
+                ),
               ),
-            ),
 
-            // Form Field (Scrollable)
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                children: [
-                  _buildLabel("Jenis Izin"),
-                  DropdownButtonFormField<String>(
-                    initialValue: jenis, // Gunakan value, bukan initialValue agar reaktif
-                    hint: const Text("Pilih Jenis Izin"),
-                    decoration: _inputDecoration(),
-                    items: const [
-                      DropdownMenuItem(value: "Sakit", child: Text("Sakit")),
-                      DropdownMenuItem(value: "Cuti", child: Text("Cuti")),
-                      DropdownMenuItem(value: "Izin", child: Text("Izin")),
-                    ],
-                    onChanged: (value) => setState(() => jenis = value),
-                  ),
+              const SizedBox(height: 20),
 
-                  const SizedBox(height: 20),
-
-                  _buildLabel("Tanggal Izin"),
-                  InkWell(
-                    onTap: pilihTanggal,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(DateFormat('dd MMMM yyyy').format(selectedDate),
-                              style: const TextStyle(fontSize: 15)),
-                          const Icon(Icons.calendar_month, color: Colors.green),
-                        ],
-                      ),
+              Container(                      
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              child: GestureDetector(
+                  onTap: pilihTanggal,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.grey),
+                    ),
+                    child: Row(               
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(DateFormat('dd MMMM yyyy').format(selectedDate),
+                            style: const TextStyle(fontSize: 15)),
+                        const Icon(Icons.calendar_month, color: Colors.green),
+                      ],
                     ),
                   ),
+                ),
+              ),
 
-                  const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-                  _buildLabel("Keterangan"),
-                  TextField(
-                    controller: keteranganController,
-                    maxLines: 3,
-                    decoration: _inputDecoration(hint: "Berikan alasan singkat..."),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(255, 222, 250, 223),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: TextField(
+                  controller: keteranganController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: "Keterangan",
+                    border: OutlineInputBorder(),
                   ),
+                ),
+              ),
 
-                  const SizedBox(height: 20),
-
-                  _buildLabel("Bukti Foto"),
-                  GestureDetector(
+              const SizedBox(height: 20),
+                Container(                      
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                  child:  GestureDetector(
                     onTap: ambilFoto,
                     child: Container(
                       height: 150, // Diberi tinggi tetap agar rapi
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
+                        color:  Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.grey),
                       ),
                       child: fotoFile != null 
                         ? ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(4),
                             child: Image.file(fotoFile!, fit: BoxFit.cover),
                           )
                         : Column(
@@ -307,66 +336,37 @@ class _IzinPageState extends State<IzinPage> {
                                 style: TextStyle(color: Colors.grey[600])),
                             ],
                           ),
-                    ),
+                    ),    
                   ),
-
-                  const SizedBox(height: 40),
-
-                  // Button Kirim
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: isLoading ? null : submitIzin,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[600],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                ),
+               
+                  
+              const SizedBox(height: 40),
+                    
+                    // Button Kirim
+              ElevatedButton(
+                onPressed: isLoading ? null : submitIzin,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.all(15),
+                  backgroundColor: Colors.green,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Text(
+                        'Simpan',
+                        style: TextStyle(fontSize: 16, color: Colors.white),
                       ),
-                      child: isLoading
-                          ? const SizedBox(
-                              height: 20, 
-                              width: 20, 
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text("KIRIM LAPORAN", 
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8, left: 4),
-      child: Text(text, 
-        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
-    );
-  }
-
-  InputDecoration _inputDecoration({String? hint}) {
-  return InputDecoration(
-    hintText: hint,
-    filled: true,
-    fillColor: Colors.white,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: Colors.grey.shade300),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Colors.green, width: 1.5),
-    ),
-  );
-}
 }
