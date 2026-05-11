@@ -31,6 +31,18 @@ class _ProfilPageState extends State<ProfilPage>
   String jam = DateFormat('HH:mm').format(DateTime.now());
   Timer? timer;
 
+  String getRoleDisplayName(String? roleId) {
+  switch (roleId) {
+    case '1': return 'Manager';
+    case '2': return 'HR';
+    case '3': return 'Admin';
+    case '4': return 'Kepala Toko';
+    case '5': return 'Asisten';
+    case '6': return 'Karyawan';
+    default: return 'User';
+  }
+}
+
   @override
   void initState() {
     super.initState();
@@ -79,9 +91,9 @@ class _ProfilPageState extends State<ProfilPage>
 
     setState(() {
       userId = prefs.getString("user_id")?.trim();
-      role = prefs.getString("role");
+      role = prefs.getString("role")?.toString().trim();
       namaUser = prefs.getString("namaUser");
-      cabang = prefs.getString("cabang");
+      cabang = prefs.getString("cabang")??"Tanpa Cabang?";
       isLoadingProfil = false;
     });
 
@@ -304,13 +316,14 @@ class _ProfilPageState extends State<ProfilPage>
             _buildDataUser(),
             const SizedBox(height: 20),
             _buildRiwayat(),
-            if (role == 'hr' || role == 'admin')...[
+            // 2 = hr, 3 = admin, 4 = kepala toko,
+            if (role == '2' || role == '3')...[
               const SizedBox(height: 20),
               _buildTambahKaryawan(),
                const SizedBox(height: 20),
               _buildRekabAbsensiAll(),
             ],
-            if (role == 'kepala toko' || role == 'admin')...[
+            if (role == '4' || role == '3')...[
               const SizedBox(height: 20),
               _buildRekabAbsensiCabang(),
             ],
@@ -389,7 +402,7 @@ class _ProfilPageState extends State<ProfilPage>
           const Divider(height: 20, thickness: 0.5),
           _item(Icons.badge, "User ID", userId),
           const Divider(height: 20, thickness: 0.5),
-          _item(Icons.settings, "Role", role),
+          _item(Icons.settings, "Role", getRoleDisplayName(role)),
           const Divider(height: 20, thickness: 0.5),
           _item(Icons.location_on, "Cabang", cabang),
         ],

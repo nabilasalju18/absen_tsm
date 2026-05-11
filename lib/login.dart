@@ -62,22 +62,23 @@ Future<void> loginAbsen() async {
     final prefs = await SharedPreferences.getInstance();
 
     String cabang = data["data"]["cabang"] ?? "-";
-    String role = data["data"]["role"] ?? "-";
+    String role = data["data"]["role"].toString();
 
-    // 🔥 VALIDASI ROLE DULU
-    if (!["kepala toko", "asisten", "admin"].contains(role)) {
+    // VALIDASI ROLE DULU
+    // 3 = admin, 4 = kepala toko, 5 = asisten
+    if (!["3", "4", "5"].contains(role)) {
       showError("Kamu tidak punya akses absensi");
       return;
     }
 
-    // 🔥 SIMPAN DATA
+    // SIMPAN DATA
     await prefs.setString("cabangDevice", cabang);
     await prefs.setString("role", role);
     await prefs.setBool("isLogin", true);
 
     if (!mounted) return;
 
-    // 🔥 BARU NAVIGATE SEKALI
+    // BARU NAVIGATE SEKALI
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const MainScreen()),

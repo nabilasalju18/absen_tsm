@@ -19,16 +19,23 @@ class _TambahKaryawanPageState extends State<TambahKaryawanPage> {
   final TextEditingController _userIdController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  String? _selectedRole;
+  int? _selectedRoleId;
+  final Map<int, String> _rolesMap = {
+    1: 'manager',
+    2: 'hr',
+    3: 'admin',
+    4: 'kepala toko',
+    5: 'asisten',
+    6: 'karyawan',
+  };
+
   String? _selectedStatus;
   String? _selectedCabang;
 
-  bool isLoading = false;
-
-  final List<String> _roles = ['admin', 'hr', 'karyawan','kepala toko', 'asisten'];
   final List<String> _statuses = ['Aktif', 'Tidak Aktif'];
   final List<String> _listCabang = ['DC', 'Tsamaniya 1', 'Tsamaniya 2'];
-
+  
+  bool isLoading = false;
   @override
   void dispose() {
     _namaController.dispose();
@@ -40,7 +47,7 @@ class _TambahKaryawanPageState extends State<TambahKaryawanPage> {
   Future<void> _simpanData() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedRole == null ||
+    if (_selectedRoleId == null ||
         _selectedStatus == null ||
         _selectedCabang == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -58,7 +65,7 @@ class _TambahKaryawanPageState extends State<TambahKaryawanPage> {
           'nama': _namaController.text,
           'user_id': _userIdController.text,
           'password': _passwordController.text,
-          'role': _selectedRole!,
+          'role': _selectedRoleId.toString(),
           'status_karyawan': _selectedStatus!,
           'cabang': _selectedCabang!,
           'created_at': DateTime.now().toIso8601String(),
@@ -85,7 +92,7 @@ class _TambahKaryawanPageState extends State<TambahKaryawanPage> {
             _passwordController.clear();
 
             setState(() {
-              _selectedRole = null;
+              _selectedRoleId = null;
               _selectedStatus = null;
               _selectedCabang = null;
             });
@@ -198,19 +205,19 @@ Widget build(BuildContext context) {
                   color: const Color.fromARGB(255, 222, 250, 223),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: DropdownButtonFormField<String>(
-                  initialValue: _selectedRole,
+                child: DropdownButtonFormField<int>(
+                  initialValue: _selectedRoleId,
                   decoration: const InputDecoration(
                     labelText: 'Role',
                     border: OutlineInputBorder(),
                   ),
-                  items: _roles
-                      .map((e) => DropdownMenuItem(
-                            value: e,
-                            child: Text(e),
+                  items: _rolesMap.entries
+                      .map((e) => DropdownMenuItem<int>(
+                            value: e.key,
+                            child: Text(e.value),
                           ))
                       .toList(),
-                  onChanged: (val) => setState(() => _selectedRole = val),
+                  onChanged: (val) => setState(() => _selectedRoleId = val),
                 ),
               ),
               const SizedBox(height: 10),

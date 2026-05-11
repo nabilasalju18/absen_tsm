@@ -62,10 +62,10 @@ class _LoginProfilPageState extends State<LoginProfilPage> {
         final prefs = await SharedPreferences.getInstance();
 
         await prefs.setBool("profileLogin", true);
-        await prefs.setString("user_id", data["data"]["user_id"].toString()); // FIX
-        await prefs.setString("namaUser", data["data"]["nama"] ?? "-");
-        await prefs.setString("role", data["data"]["role"] ?? "-");
-        await prefs.setString("cabang", data["data"]["cabang"] ?? "-");
+        await prefs.setString("user_id", data["data"]["user_id"].toString()); 
+        await prefs.setString("namaUser", data["data"]["nama"].toString());
+        await prefs.setString("role", data["data"]["role"].toString());
+        await prefs.setString("cabang", data["data"]["cabang"]??"-");
 
         if (!mounted) return;
 
