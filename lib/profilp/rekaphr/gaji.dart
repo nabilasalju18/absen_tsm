@@ -87,7 +87,8 @@ class _RekapGajiContentState extends State<RekapGajiContent> {
 
       final response = await http.get(
         Uri.parse(
-          "http://192.168.1.37/absensi_karyawan/rekapgaji.php?bulan=$bulan&tahun=$tahun"
+          "http://192.168.1.37/absensi_karyawan/rekapgaji.php"
+          "?cabang=${Uri.encodeComponent(widget.cabang)}&bulan=$bulan&tahun=$tahun"
         ),
       );
 
@@ -248,7 +249,6 @@ class _RekapGajiContentState extends State<RekapGajiContent> {
           ),
           child: Row(
             children: [
-              /// NAMA
               Expanded(
                 flex: 4,
                 child: Text(

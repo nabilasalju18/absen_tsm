@@ -30,76 +30,69 @@ class _HomePageContentState extends State<HomePageContent> {
   final String baseUrl = "http://192.168.1.37/absensi_karyawan";
 
   final FocusNode inputFocus = FocusNode();
-  // controller
+
   final TextEditingController manualController = TextEditingController();
   final TextEditingController textController = TextEditingController();
 
-  // state
+  bool bolehAbsen = false;
+  bool isValidAbsen = false;
+  bool isScanning = false;
+  bool isScanned = false;
+  bool isCameraReady = false;
+  bool isLoadingLokasi = true;
+  bool isLoading = false;
+  bool isMoreOpen = false;
+  bool isPickingImage = false;
 
   String? namaUser;
   String? kodeAbsen;
   String? cabangDevice;
   String? cabangUser;
   String? statusUser;
-
-  bool bolehAbsen = false;
-  String? tipeAbsen; // scan / manual
-  bool isValidAbsen = false;
+  String? tipeAbsen; 
   String? scanMessage;
   String? kirimMessage;
-  bool isScanning = false;
-  bool isScanned = false;
-
-  bool isCameraReady = false;
-
+  String statusAbsen = "belum";
+  String lokasiText = "Mencari lokasi...";
   String tanggal = DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(DateTime.now());
   String jam = DateFormat('HH:mm').format(DateTime.now());
-  Timer? timer;
-
+  
   double latitude = 0.0;
   double longitude = 0.0;
 
   double latKantor = -7.6002444;
   double longKantor = 112.1018223;
   double radiusKantor = 100;
-
-  bool isLoadingLokasi = true;
-  bool isLoading = false;
-
-  String statusAbsen = "belum";
-  bool isMoreOpen = false;
-
+  
   File? fotoFile;
-  bool isPickingImage = false;
-
-  String lokasiText = "Mencari lokasi...";
+  
+  Timer? timer;
 
   late final MobileScannerController cameraController;
-
-
+  
   @override
   void initState() {
     super.initState();
 
     cameraController = MobileScannerController(
-      detectionSpeed: DetectionSpeed.noDuplicates,
+
       facing: CameraFacing.back,
+      torchEnabled: false,
     );
 
     updateWaktu();
     cekLokasi();
     loadCabang();
-    loadStatus();
-    
-
+    loadStatus();  
+  
     isCameraReady = widget.cameras.isNotEmpty;
 
     timer = Timer.periodic(const Duration(seconds: 1), (_) {
       final now = DateTime.now();
-      setState(() {
-        tanggal = DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(now);
-        jam = DateFormat('HH:mm').format(now);
-      });
+        setState(() {
+          tanggal = DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(now);
+          jam = DateFormat('HH:mm').format(now);
+        });
     });
   }
 
@@ -124,7 +117,7 @@ class _HomePageContentState extends State<HomePageContent> {
     fotoFile = null;
     tipeAbsen = null;
     scanMessage = "";
-    statusAbsen = "belum"; // atau default kamu
+    statusAbsen = "belum"; 
   });
 }
 
@@ -138,6 +131,41 @@ class _HomePageContentState extends State<HomePageContent> {
     });
   }
 
+  void _showZoomableImageFile(BuildContext context, File file) {
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(10),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          InteractiveViewer(
+            panEnabled: true,
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.file(
+                file,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          Positioned(
+            top: 10,
+            right: 10,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+  
   Future<void> _showDialog(String message) async {
     if (!context.mounted) return;
 
@@ -184,7 +212,7 @@ class _HomePageContentState extends State<HomePageContent> {
 
   Future<void> _submitManual(String value) async {
     setState(() {
-      statusAbsen = "belum"; // 🔥 WAJIB
+      statusAbsen = "belum";
     });
     if (value.trim().isEmpty) return;
 
@@ -206,7 +234,7 @@ class _HomePageContentState extends State<HomePageContent> {
 
     setState(() {
       isScanned = isValid;
-      scanMessage = isValid ? "✅ Kode valid" : "❌ Kode salah";
+      scanMessage = isValid ? "Kode valid" : "Kode salah";
       isValidAbsen = isValid;
     });
   }
@@ -225,7 +253,7 @@ class _HomePageContentState extends State<HomePageContent> {
 
     final code = result.toString();
 
-    // 🔍 TAMPILKAN DULU KE USER
+    // TAMPILKAN DULU KE USER
     setState(() {
       kodeAbsen = code;
       scanMessage = "Hasil scan: $code";
@@ -242,16 +270,14 @@ class _HomePageContentState extends State<HomePageContent> {
 
     setState(() {
       isScanned = isValid;
-      scanMessage = isValid ? "✅ Scan valid" : "❌ Kode tidak ditemukan";
+      scanMessage = isValid ? "Scan valid" : "Kode tidak ditemukan";
       isValidAbsen = isValid;
     });
   }
 
-  Future<bool> validasiKode(String kode) async {
-    
+  Future<bool> validasiKode(String kode) async {   
     final safeKode = kode.trim();
-
-    //  ringan → SnackBar
+    // 1. Cek dulu kalau kode kosong, langsung return false tanpa perlu panggil API
     if (safeKode.isEmpty) {
       _showMessage("Kode kosong");
       return false;
@@ -267,16 +293,14 @@ class _HomePageContentState extends State<HomePageContent> {
       );
 
       if (!mounted) return false;
-
-      // ❌ server error → dialog (penting)
+      // 2. Cek response status code, kalau bukan 200 berarti ada masalah di server
       if (response.statusCode != 200) {
         await _showDialog("Server error");
         return false;
       }
 
       final data = jsonDecode(response.body);
-
-      // gagal dari backend → dialog (WAJIB)
+      // 3. Cek status di response body, kalau bukan success berarti kode tidak valid
       if (data['status'] != 'success') {
         final message = data['message'] ?? "Kode tidak valid";
 
@@ -295,8 +319,7 @@ class _HomePageContentState extends State<HomePageContent> {
       }
 
       if (!mounted) return false;
-
-      // SUCCESS (tidak perlu dialog)
+      // 4. Kalau sukses, update state dengan data user yang didapat dari server
       setState(() {
         namaUser = data['nama'];
         kodeAbsen = data['user_id'];
@@ -318,8 +341,7 @@ class _HomePageContentState extends State<HomePageContent> {
     setState(() => isLoadingLokasi = true);
     bool serviceEnabled;
     LocationPermission permission;
-
-    // 1. Cek GPS aktif atau tidak
+    // Cek apakah layanan lokasi aktif
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
     if (!serviceEnabled) {
@@ -329,8 +351,7 @@ class _HomePageContentState extends State<HomePageContent> {
       });
       return;
     }
-
-    // 2. Cek izin lokasi
+    // Cek izin lokasi
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -350,22 +371,19 @@ class _HomePageContentState extends State<HomePageContent> {
       });
       return;
     }
-
-    // 3. Ambil posisi user
+    // Jika izin sudah diberikan, dapatkan posisi saat ini
     Position pos = await Geolocator.getCurrentPosition();
 
     double latUser = pos.latitude;
     double longUser = pos.longitude;
-
-    // 4. Hitung jarak ke kantor
+    // Hitung jarak antara lokasi user dan kantor
     double jarak = Geolocator.distanceBetween(
       latUser,
       longUser,
       latKantor,
       longKantor,
     );
-
-    // 5. Set semua state sekaligus
+    // Update state dengan informasi lokasi dan status absen
     setState(() {
       latitude = latUser;
       longitude = longUser;
@@ -386,30 +404,22 @@ class _HomePageContentState extends State<HomePageContent> {
     setState(() => isPickingImage = true);
 
     try {
-      // 1. DISPOSE total controller di halaman ini sebelum pindah
-      // Menggunakan stop() terkadang tidak cukup melepaskan hardware lock
+      // Pastikan kamera sudah siap sebelum membuka halaman kamera
       if (cameraController.value.isInitialized) {
         await cameraController.dispose(); 
       }
 
       if (!mounted) return;
-
-      // 2. Tunggu hasil dari CameraPage
+      // Pastikan kamera tersedia sebelum membuka halaman kamera
       final path = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => CameraPage(cameras: widget.cameras),
         ),
       );
-
-      // 3. Setelah balik, inisialisasi ulang controller halaman utama jika perlu
-      // Tapi tunggu sebentar agar hardware kamera dilepaskan oleh CameraPage
+      // Beri delay kecil agar transisi halaman kamera lebih mulus
       await Future.delayed(const Duration(milliseconds: 300));
-      
-      /* PANGGIL FUNGSI INIT KAMERA HALAMAN UTAMA LAGI DISINI 
-        Misal: await initMainPageCamera(); 
-      */
-
+      // Setelah kembali dari halaman kamera, cek apakah path valid dan file ada
       if (path != null && path.isNotEmpty) {
         File file = File(path);
         if (await file.exists()) {
@@ -437,7 +447,7 @@ class _HomePageContentState extends State<HomePageContent> {
     }
 
     if (safeFoto == null) {
-      _showMessage("Ambil foto dulu ya 📸");
+      _showMessage("Ambil foto dulu ya");
       return;
     }
 
@@ -474,14 +484,12 @@ class _HomePageContentState extends State<HomePageContent> {
 
       final data = jsonDecode(response.body);
       final message = data['message'] ?? "Tidak ada pesan";
-
-      //  ERROR
+      // jika error, langsung keluarin dialog dan jangan lanjut ke validasi berikutnya
       if (data['status'] == 'error') {
         await _showDialog(message);
         return;
       }
-
-      //  COMPLETED (HARUS DIDAHULUKAN)
+      // jika sukses dan sudah complete, berarti absen masuk/keluar sudah lengkap
       if (data['status'] == 'completed') {
         await _showDialog(message);
 
@@ -498,8 +506,7 @@ class _HomePageContentState extends State<HomePageContent> {
 
         return;
       }
-
-      //  SUCCESS
+      // jika sukses tapi belum complete, berarti masih harus absen pulang
       await _showDialog(message);
 
       if (!mounted) return;
@@ -557,10 +564,10 @@ class _HomePageContentState extends State<HomePageContent> {
   @override
   
   Widget build(BuildContext context) {
-    // TULIS DI SINI: Bungkus Scaffold dengan GestureDetector
+    //  Tangkap tap di mana saja untuk sembunyikan keyboard
     return GestureDetector(
       onTap: () {
-        // Fungsi untuk menutup keyboard saat area mana saja diketuk
+        //  Hilangkan fokus dari input apa pun yang aktif
         FocusScope.of(context).unfocus();
       },
       child: Scaffold(
@@ -602,8 +609,7 @@ class _HomePageContentState extends State<HomePageContent> {
       ),
       child: Column(
         children: [
-
-          //  BARIS ATAS (CABANG & JAM)
+        // INFO CABANG + WAKTU
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -680,11 +686,10 @@ class _HomePageContentState extends State<HomePageContent> {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-
-      // 🔥 ROW ATAS: CEK LOKASI + IZIN
+      // Judul Lokasi
       Row(
         children: [
-
+          // Tombol Cek Lokasi
           Expanded(
             child: ElevatedButton(
               onPressed: cekLokasi,
@@ -697,7 +702,7 @@ class _HomePageContentState extends State<HomePageContent> {
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-
+              // INFO STATUS LOKASI
               Material(
                 color: Colors.grey.shade100,
                 shape: const CircleBorder(),
@@ -706,8 +711,7 @@ class _HomePageContentState extends State<HomePageContent> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => IzinPage(cameras: availableCamerasList)),
-                      
+                      MaterialPageRoute(builder: (context) => IzinPage(cameras: availableCamerasList)),           
                     );
                   },
                 ),
@@ -728,8 +732,7 @@ class _HomePageContentState extends State<HomePageContent> {
       ),
 
       const SizedBox(height: 3),
-
-      // 🔥 CARD LOKASI (tanpa tombol izin)
+      // Card Lokasi
       Container(
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
@@ -748,7 +751,7 @@ class _HomePageContentState extends State<HomePageContent> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
+                  // INFO LOKASI
                   const Text(
                     "Lokasi Anda saat ini",
                     style: TextStyle(fontSize: 12, color: Colors.grey),
@@ -795,7 +798,7 @@ class _HomePageContentState extends State<HomePageContent> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch, // Memaksa anak Row mengikuti tinggi parent
             children: [
-            /// 🔹 KIRI 
+            // Tombol Absen (QR + Manual)
             Expanded(
               child: Container(
                 padding: const EdgeInsets.all(12), // Jarak dalam kotak besar
@@ -814,8 +817,7 @@ class _HomePageContentState extends State<HomePageContent> {
                   crossAxisAlignment: CrossAxisAlignment.center, // QR tetap di kiri
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    
-                    /// 1. Container QR (Bentuk Lingkaran)
+                    // 1. Container QR Code Scanner
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.blue[50],
@@ -827,7 +829,7 @@ class _HomePageContentState extends State<HomePageContent> {
                       ),
                     ),
 
-                    const SizedBox(height: 12), // Jarak antara QR dan Input
+                    const SizedBox(height: 12),
 
                     /// 2. Container Input (Ketik Manual)
                     Container(
@@ -856,21 +858,19 @@ class _HomePageContentState extends State<HomePageContent> {
                           ),
                         ],
                       ),
-                    ),                
+                    ),
                   ],
-                ),
-                
+                ),  
               ),
             ),
 
             const SizedBox(width: 12),
-
-            /// 🔹 KANAN (KAMERA)
+            // Tombol Foto
             Expanded(
               child: GestureDetector(
-                onTap: ambilFoto, // Agar seluruh kotak bisa diklik untuk ambil foto
+                onTap: ambilFoto,
                 child: Container(
-                  // Padding dan Decoration dibuat sama dengan sisi kiri agar simetris
+                  // Jika belum ada foto, tampilkan tombol ambil foto
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -883,18 +883,18 @@ class _HomePageContentState extends State<HomePageContent> {
                       ),
                     ],
                   ),
-                  // Gunakan Center agar ikon tepat di tengah kotak
+                  // Jika sudah ada foto, tampilkan preview foto
                   child: Center(
                     child: Container(
-                      padding: const EdgeInsets.all(15), // Jarak ikon ke lingkaran
+                      padding: const EdgeInsets.all(15),
                       decoration: BoxDecoration(
                         color: Colors.orange[50],
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
-                        Icons.camera_alt, // Atau Icons.camera_front
+                        Icons.camera_alt,
                         color: Colors.orange,
-                        size: 40, // Ukuran ikon dibuat agak besar
+                        size: 40, 
                       ),
                     ),
                   ),
@@ -906,8 +906,7 @@ class _HomePageContentState extends State<HomePageContent> {
       ),
       
         const SizedBox(height: 16),
-          
-        /// 🔽 MORE CHOICE
+        // Tombol "More Choice" 
         GestureDetector(
           onTap: () {
             setState(() {
@@ -932,8 +931,7 @@ class _HomePageContentState extends State<HomePageContent> {
             ],
           ),
         ),
-
-        /// 🔥 EXPAND
+        //  Container tambahan untuk opsi lebih banyak
         if (isMoreOpen) ...[
           const SizedBox(height: 12),
           Row(
@@ -961,123 +959,159 @@ class _HomePageContentState extends State<HomePageContent> {
   }
 
   Widget _buildKirimButton() {
-  if (namaUser == null || statusAbsen == "selesai"|| statusAbsen == "lengkap") {
-    return const SizedBox(); 
-  }
+    if (namaUser == null || statusAbsen == "selesai"|| statusAbsen == "lengkap") {
+      return const SizedBox(); 
+    }
 
-  final bool siapKirim =
-      bolehAbsen &&
-      (kodeAbsen?.isNotEmpty ?? false) &&
-      fotoFile != null;
+    final bool siapKirim =
+        bolehAbsen &&
+        (kodeAbsen?.isNotEmpty ?? false) &&
+        fotoFile != null;
 
-  String textButton;
+    String textButton;
+    if (statusAbsen == "belum") {
+      textButton = siapKirim ? "ABSEN MASUK" : "LENGKAPI DATA";
+    } else if (statusAbsen == "masuk") {
+      textButton = siapKirim ? "ABSEN PULANG" : "LENGKAPI DATA";
+    } else {
+      textButton = "SUDAH ABSEN";
+    }
 
-  if (statusAbsen == "belum") {
-    textButton = siapKirim ? "ABSEN MASUK" : "LENGKAPI DATA";
-  } else if (statusAbsen == "masuk") {
-    textButton = siapKirim ? "ABSEN PULANG" : "LENGKAPI DATA";
-  } else {
-    textButton = "SUDAH ABSEN";
-  }
-
-  return Container(
-    margin: const EdgeInsets.only(top: 16),
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.5),
-          blurRadius: 10,
-        ),
-      ],
-    ),
-    child: Column(
-      children: [
-
-        /// 🔹 ATAS: DATA + FOTO
-        Row(
-          children: [
-            /// KIRI → DATA
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Nama: $namaUser"),
-                  Text("Kode: $kodeAbsen"),
-                  Text("Cabang: $cabangUser"),
-                ],
-              ),
-            ),
-
-            const SizedBox(width: 16),
-
-            /// KANAN → FOTO
-            Expanded(
-              child: GestureDetector(
-                onTap: ambilFoto, 
-                child: Container(
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200], 
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey),
-                  ), 
-                  child: fotoFile != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(
-                        fotoFile!,
-                        fit: BoxFit.cover,
-                        width: double.infinity, // Biar menempuh lebar kotak
-                      ),
-                    )
-                  : const Icon(Icons.camera_alt, color: Colors.grey)
-                )
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 16),
-
-        /// 🔹 BUTTON
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: isLoading || statusAbsen == "selesai" 
-                ? null
-                : () {
-                  if (!siapKirim) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Lengkapi data dulu ya")),
-                    );
-                    return;
-                  }
-                  kirimAbsensi();
-                },
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            child: isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(
-                    textButton,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 10,
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // INFO USER + FOTO
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Data User
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Nama: $namaUser", style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text("Kode: $kodeAbsen"),
+                    Text("Cabang: $cabangUser"),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Foto
+              Expanded(
+                flex: 2,
+                child: GestureDetector(
+                  // LOGIKA: Jika foto ada -> Zoom, jika kosong -> Ambil Foto
+                  onTap: fotoFile != null
+                  ? () => _showZoomableImageFile(context, fotoFile!)
+                  : ambilFoto, 
+                  child: Container(
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200], 
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey),
+                    ), 
+                    child: fotoFile != null
+                    ? Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(
+                              fotoFile!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 5,
+                            right: 5,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: GestureDetector(
+                                onTap: ambilFoto,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black54,
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt,
+                                    size: 16,
+                                    color: Colors.white
+                                  ),
+                                )
+                              )
+                            ),
+                          ),
+                        ],
+                      )
+                    : const Icon(Icons.camera_alt, color: Colors.grey, size: 40)
+                  )
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          // Tombol Kirim
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: isLoading || statusAbsen == "selesai" 
+                  ? null
+                  : () {
+                    if (!siapKirim) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Lengkapi data dulu ya")),
+                      );
+                      return;
+                    }
+                    kirimAbsensi();
+                  },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: siapKirim ? Colors.green : Colors.grey,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(
+                      textButton,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
 }

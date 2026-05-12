@@ -65,8 +65,8 @@ Future<void> loginAbsen() async {
     String role = data["data"]["role"].toString();
 
     // VALIDASI ROLE DULU
-    // 3 = admin, 4 = kepala toko, 5 = asisten
-    if (!["3", "4", "5"].contains(role)) {
+    // R04 = admin, R05 = kepala toko, R06 = asisten
+    if (!["R04", "R05", "R06"].contains(role)) {
       showError("Kamu tidak punya akses absensi");
       return;
     }

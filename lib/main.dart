@@ -12,12 +12,13 @@ late List<CameraDescription> availableCamerasList;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID', null);
-  availableCamerasList = await availableCameras();
 
-  // --- TAMBAHKAN INI ---
+  availableCamerasList = await availableCameras();
+ 
+  // ---------------------
   final prefs = await SharedPreferences.getInstance();
   bool isLoginDevice = prefs.getBool("isLoginDevice") ?? false;
-  
+
   // ---------------------
 
   runApp(MyApp(isLoginDevice: isLoginDevice)); // Kirim status login ke MyApp

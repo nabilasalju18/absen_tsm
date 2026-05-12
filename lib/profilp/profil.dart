@@ -33,12 +33,12 @@ class _ProfilPageState extends State<ProfilPage>
 
   String getRoleDisplayName(String? roleId) {
   switch (roleId) {
-    case '1': return 'Manager';
-    case '2': return 'HR';
-    case '3': return 'Admin';
-    case '4': return 'Kepala Toko';
-    case '5': return 'Asisten';
-    case '6': return 'Karyawan';
+    case 'R02': return 'Manager';
+    case 'R03': return 'HR';
+    case 'R04': return 'Admin';
+    case 'R05': return 'Kepala Toko';
+    case 'R06': return 'Asisten';
+    case 'R07': return 'Karyawan';
     default: return 'User';
   }
 }
@@ -316,14 +316,14 @@ class _ProfilPageState extends State<ProfilPage>
             _buildDataUser(),
             const SizedBox(height: 20),
             _buildRiwayat(),
-            // 2 = hr, 3 = admin, 4 = kepala toko,
-            if (role == '2' || role == '3')...[
+            // R03 = hr, R04 = admin, R05 = kepala toko,
+            if (role == 'R03' || role == 'R04')...[
               const SizedBox(height: 20),
               _buildTambahKaryawan(),
                const SizedBox(height: 20),
               _buildRekabAbsensiAll(),
             ],
-            if (role == '4' || role == '3')...[
+            if (role == 'R04' || role == 'R05')...[
               const SizedBox(height: 20),
               _buildRekabAbsensiCabang(),
             ],

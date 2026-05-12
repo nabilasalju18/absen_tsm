@@ -22,6 +22,47 @@ class _RekapCabangHarianContentState extends State<RekapCabangHarianContent> {
     _fetchRekap();
   }
 
+  void _showZoomableImage(BuildContext context, String? fotoName) {
+    if (fotoName == null || fotoName.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(10),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Widget untuk Zoom
+            InteractiveViewer(
+              panEnabled: true, 
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  "http://192.168.1.37/absensi_karyawan/uploads/$fotoName",
+                  fit: BoxFit.contain, // Agar foto terlihat utuh
+                  errorBuilder: (context, error, stackTrace) => 
+                    const Icon(Icons.broken_image, color: Colors.white, size: 50),
+                ),
+              ),
+            ),
+            // Tombol Tutup
+            Positioned(
+              top: 10,
+              right: 10,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -195,6 +236,33 @@ class _RekapCabangHarianContentState extends State<RekapCabangHarianContent> {
     );
   }
 
+  Widget _buildFotoKecil(String? fotoName) {
+    return GestureDetector(
+      onTap: () => _showZoomableImage(context, fotoName), // Tambahkan fungsi untuk zoom  
+      child: Container(
+        margin: const EdgeInsets.only(top: 4),
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          color: Colors.grey.shade200,
+          border: Border.all(color: Colors.grey.shade300, width: 0.5),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: (fotoName != null && fotoName.isNotEmpty)
+              ? Image.network(
+                  "http://192.168.1.37/absensi_karyawan/uploads/$fotoName",
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => 
+                  const Icon(Icons.person, size: 20, color: Colors.grey),
+                )
+              : const Icon(Icons.no_photography, size: 20, color: Colors.grey),
+        ),
+      )
+    );
+  }
+  
   Widget _buildListRekap() {
     return ListView.builder(
       shrinkWrap: true,
@@ -206,6 +274,8 @@ class _RekapCabangHarianContentState extends State<RekapCabangHarianContent> {
         final nama = item["nama"]?.toString() ?? "-";
         final masuk = item["jam_masuk"];
         final pulang = item["jam_pulang"];
+        final fotoMasuk = item["foto_masuk"]; // Pastikan key ini sesuai dari PHP
+        final fotoPulang = item["foto_pulang"];
 
         bool isComplete = (masuk != null && pulang != null);
 
@@ -237,29 +307,42 @@ class _RekapCabangHarianContentState extends State<RekapCabangHarianContent> {
              
               Expanded(
                 flex: 2, 
-                child: Text(
-                  masuk != null ? masuk.toString().substring(0, 5) : "-", 
-                  textAlign: TextAlign.center, 
-                  style: TextStyle(color: Colors.blue.shade700, 
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      masuk != null ? masuk.toString().substring(0, 5) : "-", 
+                      textAlign: TextAlign.center, 
+                      style: TextStyle(color: Colors.blue.shade700, 
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold
+                      ),
+                    ),
+                    _buildFotoKecil(fotoMasuk), // Foto kecil untuk jam masuk
+                  ],
                 ),
               ),
           
               Expanded(
                 flex: 2, 
-                child: Text(
-                  pulang != null ? pulang.toString().substring(0, 5) : "-", 
-                  textAlign: TextAlign.center, 
-                  style: TextStyle(color: Colors.blue.shade700, 
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      pulang != null ? pulang.toString().substring(0, 5) : "-", 
+                      textAlign: TextAlign.center, 
+                      style: TextStyle(color: Colors.blue.shade700, 
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold
+                      ),
+                    ),
+                    _buildFotoKecil(fotoPulang), // Foto kecil untuk jam pulang
+                  ],
                 ),
               ),
+
               Expanded(
-              flex: 2,
+              flex: 1,
               child: isComplete 
                 ? const Icon(Icons.check_circle, 
                 color: Colors.green, 
